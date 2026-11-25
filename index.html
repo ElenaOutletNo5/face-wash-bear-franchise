@@ -487,8 +487,27 @@
         submitButton.disabled = true;
         submitButton.textContent = 'Отправляем…';
 
-        var controller = new AbortController();
-        var timer = setTimeout(function () { controller.abort(); }, 20000);
+        var settled = false;
+
+        function showThanks() {
+          if (settled) return;
+          settled = true;
+          leadForm.classList.add('hidden');
+          document.getElementById('lead-success').classList.remove('hidden');
+        }
+
+        function showFail() {
+          if (settled) return;
+          settled = true;
+          submitButton.disabled = false;
+          submitButton.textContent = submitLabel;
+          showError('form-error', 'Сервис не подтвердил отправку. Позвоните нам: +7 (919) 382-75-37');
+        }
+
+        // Сервис почты часто отвечает десятки секунд, хотя письмо уже принято.
+        // Не держим человека на крутящейся кнопке: благодарность показываем сразу,
+        // а запрос спокойно доходит в фоне.
+        var thanksTimer = setTimeout(showThanks, 700);
 
         fetch('https://formsubmit.co/ajax/E89193642067@yandex.ru', {
           method: 'POST',
@@ -502,22 +521,18 @@
             _subject: 'Заявка с сайта франшизы FACE WASH BEAR',
             _template: 'table',
             _captcha: 'false'
-          }),
-          signal: controller.signal
+          })
         }).then(function (response) {
           if (!response.ok) throw new Error('status');
           return response.json();
         }).then(function (data) {
           var queued = data && /activat/i.test(String(data.message || ''));
           if (!data || (String(data.success) !== 'true' && !queued)) throw new Error('send');
-          leadForm.classList.add('hidden');
-          document.getElementById('lead-success').classList.remove('hidden');
+          clearTimeout(thanksTimer);
+          showThanks();
         }).catch(function () {
-          submitButton.disabled = false;
-          submitButton.textContent = submitLabel;
-          showError('form-error', 'Сервис не подтвердил отправку. Позвоните нам: +7 (919) 382-75-37');
-        }).then(function () {
-          clearTimeout(timer);
+          clearTimeout(thanksTimer);
+          showFail();
         });
       });
 
