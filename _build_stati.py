@@ -52,15 +52,28 @@ SECTION_STARTERS = (
 
 
 def is_heading(line: str) -> bool:
-    if not line or line.startswith(("—", "- ")):
+    if not line or line.startswith(("—", "- ", "http", "Или ")):
+        return False
+    if line.endswith((";", ",")) or line.startswith("https://"):
         return False
     if re.match(r"^\d+\.\s+", line) and len(line) < 120:
         return True
     if line.endswith(":") and len(line) < 80:
         return True
-    if any(line.startswith(s) for s in SECTION_STARTERS) and len(line) < 100:
+    if any(line.startswith(s) for s in SECTION_STARTERS) and len(line) < 110:
         return True
-    if len(line) < 90 and not line.endswith(".") and not line.endswith(","):
+    # Short title-like lines without sentence punctuation
+    if (
+        len(line) < 90
+        and not line.endswith(".")
+        and not line.endswith(",")
+        and not line.endswith(";")
+        and line[:1].isupper()
+        and "http" not in line
+    ):
+        # Avoid turning mid-list fragments into headings
+        if line[0].islower():
+            return False
         return True
     return False
 
